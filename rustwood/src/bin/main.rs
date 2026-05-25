@@ -4,14 +4,16 @@
 
 use defmt::*;
 use embassy_time::{Duration, Timer};
-use esp_hal::gpio::{DriveMode, Input, InputConfig, Pull};
+use esp_hal::gpio::{DriveMode, Input, InputConfig, Level, Output, OutputConfig, Pull};
 use esp_hal::ledc::channel::ChannelIFace;
 use esp_hal::ledc::timer::TimerIFace;
 use esp_hal::ledc::{Ledc, channel, timer};
 use esp_hal::time::Rate;
+use esp_println::println;
 use static_cell::StaticCell;
 
-use {panic_rtt_target as _, rtt_target as _};
+use defmt_rtt as _;
+use esp_backtrace as _;
 
 // 🟢 Declare concrete types for the static cells
 static LEDC_CELL: StaticCell<Ledc<'static>> = StaticCell::new();
@@ -21,6 +23,7 @@ static TIMER_CELL: StaticCell<timer::Timer<'static, esp_hal::ledc::LowSpeed>> = 
 async fn switch_monitor_task(
     mut switch: Input<'static>,
     led_pwm: channel::Channel<'static, esp_hal::ledc::LowSpeed>,
+    mut led_dig: Output<'static>,
 ) {
     loop {
         switch.wait_for_low().await;
@@ -28,9 +31,13 @@ async fn switch_monitor_task(
         Timer::after(Duration::from_millis(20)).await;
 
         if switch.is_high() {
+            println!("Switch released - turning on LED for 1.5s");
+            led_dig.set_high();
             led_pwm.set_duty(75).unwrap();
             Timer::after(Duration::from_millis(1500)).await;
             led_pwm.set_duty(0).unwrap();
+            led_dig.set_low();
+            println!("LED off");
         }
     }
 }
@@ -38,6 +45,7 @@ async fn switch_monitor_task(
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) {
     let peripherals = esp_hal::init(esp_hal::Config::default());
+    println!("start");
     let switch_input = Input::new(
         peripherals.GPIO4,
         InputConfig::default().with_pull(Pull::Up),
@@ -66,9 +74,21 @@ async fn main(spawner: embassy_executor::Spawner) {
         })
         .unwrap();
 
-    spawner.spawn(switch_monitor_task(switch_input, pwm_channel).unwrap());
+    let mut led_dig = Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
+
+    println!("tick");
+    error!("error");
+    warn!("warn");
+    info!("info");
+    debug!("debug");
+    trace!("trace");
+    Timer::after(Duration::from_millis(150)).await;
+    // panic!("BOOT CHECK: code is running!");
+    led_dig.set_low();
+    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig).unwrap());
 
     loop {
-        Timer::after(Duration::from_secs(10)).await;
+        println!("tick");
+        Timer::after(Duration::from_secs(1)).await;
     }
 }

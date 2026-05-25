@@ -3,33 +3,45 @@
     "editor": "wokwi",
     "parts": [
         {
-            "type": "wokwi-esp32-s3",
+            "type": "board-esp32-s3-devkitc-1",
             "id": "esp",
             "top": 0,
             "left": 0,
-            "attrs": {}
+            "rotate": 90,
+            "attrs": {
+                "serialInterface": "USB_SERIAL_JTAG"
+            }
         },
         {
             "type": "wokwi-slide-switch",
             "id": "sw1",
-            "top": -100,
+            "top": -10,
             "left": -150,
             "attrs": {}
         },
         {
             "type": "wokwi-led",
             "id": "led1",
-            "top": -100,
+            "top": -20,
             "left": 150,
             "attrs": {
                 "color": "green"
+            }
+        },
+        {
+            "type": "wokwi-led",
+            "id": "led2",
+            "top": -10,
+            "left": 200,
+            "attrs": {
+                "color": "red"
             }
         }
     ],
     "connections": [
         [
             "esp:GND.1",
-            "sw1:GND",
+            "sw1:1",
             "black",
             [
                 "v0"
@@ -37,7 +49,7 @@
         ],
         [
             "esp:4",
-            "sw1:IN",
+            "sw1:2",
             "gold",
             [
                 "v0"
@@ -45,7 +57,7 @@
         ],
         [
             "esp:GND.2",
-            "led1:CATH",
+            "led1:C",
             "black",
             [
                 "v0"
@@ -53,8 +65,24 @@
         ],
         [
             "esp:5",
-            "led1:ANOD",
+            "led1:A",
             "green",
+            [
+                "v0"
+            ]
+        ],
+        [
+            "esp:GND.3",
+            "led2:C",
+            "black",
+            [
+                "v0"
+            ]
+        ],
+        [
+            "esp:6",
+            "led2:A",
+            "red",
             [
                 "v0"
             ]
