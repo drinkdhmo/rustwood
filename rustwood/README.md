@@ -64,11 +64,22 @@ Typical tools you may need installed locally:
 - `probe-rs` for flashing / running on hardware
 - Wokwi tooling if you want to run the simulator from the command line
 
+## Environment Setup
+
+Before building or running the firmware in a new shell, load the ESP toolchain paths:
+
+```sh
+source ~/export-esp.sh
+```
+
+That script exports the toolchain binaries needed by this project, including the Xtensa GCC linker.
+
 ## Build
 
 Build the firmware with:
 
 ```sh
+source ~/export-esp.sh
 cargo build
 ```
 
@@ -83,6 +94,7 @@ target/xtensa-esp32s3-none-elf/debug/rustwood
 Because `.cargo/config.toml` sets a runner for the ESP32-S3, you can use:
 
 ```sh
+source ~/export-esp.sh
 cargo run
 ```
 
