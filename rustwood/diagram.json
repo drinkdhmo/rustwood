@@ -3,29 +3,64 @@
     "editor": "wokwi",
     "parts": [
         {
-            "type": "board-esp32-s3-devkitc-1",
+            "type": "wokwi-esp32-s3",
             "id": "esp",
-            "top": 0.59,
-            "left": 0.67,
+            "top": 0,
+            "left": 0,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-slide-switch",
+            "id": "sw1",
+            "top": -100,
+            "left": -150,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-led",
+            "id": "led1",
+            "top": -100,
+            "left": 150,
             "attrs": {
-                "flashSize": "16"
+                "color": "green"
             }
         }
     ],
     "connections": [
         [
-            "esp:TX",
-            "$serialMonitor:RX",
-            "",
-            []
+            "esp:GND.1",
+            "sw1:GND",
+            "black",
+            [
+                "v0"
+            ]
         ],
         [
-            "esp:RX",
-            "$serialMonitor:TX",
-            "",
-            []
+            "esp:4",
+            "sw1:IN",
+            "gold",
+            [
+                "v0"
+            ]
+        ],
+        [
+            "esp:GND.2",
+            "led1:CATH",
+            "black",
+            [
+                "v0"
+            ]
+        ],
+        [
+            "esp:5",
+            "led1:ANOD",
+            "green",
+            [
+                "v0"
+            ]
         ]
     ],
+    "dependencies": {},
     "serialMonitor": {
         "display": "terminal",
         "convertEol": true
