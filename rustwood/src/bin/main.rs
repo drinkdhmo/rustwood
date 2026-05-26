@@ -14,12 +14,17 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use static_cell::StaticCell;
 
+use rustwood::{LedConfig, LedConfigMutex, web, wifi};
+
 use defmt_rtt as _;
 use esp_backtrace as _;
 
 // 🟢 Declare concrete types for the static cells
 static LEDC_CELL: StaticCell<Ledc<'static>> = StaticCell::new();
 static TIMER_CELL: StaticCell<timer::Timer<'static, esp_hal::ledc::LowSpeed>> = StaticCell::new();
+
+static WEB_CONFIG: picoserve::Config = picoserve::Config::const_default();
+static LED_CONFIG_CELL: StaticCell<LedConfigMutex> = StaticCell::new();
 
 #[embassy_executor::task]
 async fn switch_monitor_task(
@@ -47,6 +52,7 @@ async fn switch_monitor_task(
 #[esp_rtos::main]
 async fn main(spawner: embassy_executor::Spawner) {
     let peripherals = esp_hal::init(esp_hal::Config::default());
+    esp_alloc::heap_allocator!(size: 72 * 1024);
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
@@ -96,6 +102,12 @@ async fn main(spawner: embassy_executor::Spawner) {
     println!("Starting switch monitor task...");
     info!("Starting switch monitor task...");
     spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig).unwrap());
+
+    let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(LedConfig::default()));
+    let (_wifi_controller, stack) = wifi::start_ap(peripherals.WIFI, &spawner).await;
+    for id in 0..web::WEB_TASK_POOL_SIZE {
+        spawner.spawn(web::web_task(id, stack, &WEB_CONFIG, led_config).unwrap());
+    }
 
     loop {
         println!("tick");
