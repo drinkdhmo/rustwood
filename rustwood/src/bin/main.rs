@@ -5,9 +5,9 @@
 use defmt::*;
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::{DriveMode, Input, InputConfig, Level, Output, OutputConfig, Pull};
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::ledc::channel::ChannelIFace;
 use esp_hal::ledc::timer::TimerIFace;
-use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::ledc::{Ledc, channel, timer};
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
@@ -92,6 +92,9 @@ async fn main(spawner: embassy_executor::Spawner) {
     Timer::after(Duration::from_millis(150)).await;
     // panic!("BOOT CHECK: code is running!");
     led_dig.set_low();
+
+    println!("Starting switch monitor task...");
+    info!("Starting switch monitor task...");
     spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig).unwrap());
 
     loop {
