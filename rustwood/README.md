@@ -2,17 +2,21 @@
 
 `rustwood` is a `no_std` Rust firmware project for the ESP32-S3 using `esp-hal`, `esp-rtos`, `embassy`, and `defmt`.
 
-The current application monitors a switch on `GPIO4`. When the switch is released, it briefly debounces the input, turns on two LEDs for 1.5 seconds, then turns them back off:
+The application monitors a switch on `GPIO4`. When the switch is released it briefly debounces the input, then drives two LEDs for a configurable duration at a configurable PWM duty cycle:
 
-- `GPIO5`: PWM-driven LED via the LEDC peripheral
+- `GPIO5`: PWM-driven LED via the LEDC peripheral (brightness set by duty cycle %)
 - `GPIO6`: digital on/off LED
+
+A WiFi access point named **rustwood** is broadcast on startup. Connecting a browser to `http://192.168.4.1` opens a configuration page where the duty cycle (0–100 %) and on-delay (ms) can be changed live without reflashing. Updated values take effect on the next button press.
 
 The repository also includes a Wokwi simulation setup so the same firmware can be exercised without physical hardware.
 
 ## Project Layout
 
-- `src/bin/main.rs`: application entry point and switch / LED behavior
-- `src/lib.rs`: crate library root
+- `src/bin/main.rs`: application entry point — hardware init, WiFi start, task spawning
+- `src/lib.rs`: shared types (`LedConfig`, `LedConfigMutex`) and the `mk_static!` macro
+- `src/wifi.rs`: WiFi AP setup using `esp-radio` and `embassy-net`
+- `src/web.rs`: picoserve HTTP server — GET renders the config form, POST updates it
 - `build.rs`: linker configuration and helpful linker error hints
 - `.cargo/config.toml`: target, runner, linker, and Rust flags
 - `diagram.json`: Wokwi wiring diagram
@@ -32,19 +36,32 @@ The included Wokwi diagram models the following connections:
 
 At startup the firmware:
 
-- initializes the ESP32-S3 HAL
+- initializes the ESP32-S3 HAL and a 72 KB heap
 - configures `GPIO4` as an input with internal pull-up
 - configures LEDC timer 0 and channel 0 for PWM output on `GPIO5`
 - configures `GPIO6` as a digital output
+- starts the WiFi AP (`rustwood`, 192.168.4.1/24)
+- spawns two HTTP server tasks on port 80
 - emits `defmt` and serial log messages
 
 During runtime it:
 
 - waits for the switch to go low and then high again
 - waits 20 ms for debounce
-- if the switch is still high, turns both LEDs on
-- keeps them on for 1.5 seconds
+- if the switch is still high, reads the current `duty_pct` and `on_delay_ms` from the shared mutex
+- turns both LEDs on at the configured duty cycle
+- keeps them on for the configured delay
 - turns both LEDs off and resumes waiting
+
+## Web Configuration UI
+
+Connect a device to the **rustwood** WiFi network (no password) and open:
+
+```
+http://192.168.4.1
+```
+
+The page shows the current duty cycle and on-delay and lets you submit new values via a form POST. Changes are applied immediately to the shared config mutex and take effect on the next button press.
 
 ## Requirements
 
