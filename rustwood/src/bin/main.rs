@@ -31,6 +31,7 @@ async fn switch_monitor_task(
     mut switch: Input<'static>,
     led_pwm: channel::Channel<'static, esp_hal::ledc::LowSpeed>,
     mut led_dig: Output<'static>,
+    led_config: &'static LedConfigMutex,
 ) {
     loop {
         switch.wait_for_low().await;
@@ -38,10 +39,14 @@ async fn switch_monitor_task(
         Timer::after(Duration::from_millis(20)).await;
 
         if switch.is_high() {
-            println!("Switch released - turning on LED for 1.5s");
+            let (duty, delay_ms) = {
+                let c = led_config.lock().await;
+                (c.duty_pct, c.on_delay_ms)
+            };
+            println!("Switch released - duty={}% delay={}ms", duty, delay_ms);
             led_dig.set_high();
-            led_pwm.set_duty(75).unwrap();
-            Timer::after(Duration::from_millis(1500)).await;
+            led_pwm.set_duty(duty).unwrap();
+            Timer::after(Duration::from_millis(delay_ms)).await;
             led_pwm.set_duty(0).unwrap();
             led_dig.set_low();
             println!("LED off");
@@ -101,9 +106,9 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     println!("Starting switch monitor task...");
     info!("Starting switch monitor task...");
-    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig).unwrap());
-
     let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(LedConfig::default()));
+    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig, led_config).unwrap());
+
     let (_wifi_controller, stack) = wifi::start_ap(peripherals.WIFI, &spawner).await;
     for id in 0..web::WEB_TASK_POOL_SIZE {
         spawner.spawn(web::web_task(id, stack, &WEB_CONFIG, led_config).unwrap());
