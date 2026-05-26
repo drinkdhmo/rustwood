@@ -3,11 +3,14 @@
 #![feature(impl_trait_in_assoc_type)]
 
 use defmt::*;
+use embassy_time::{Duration, Timer};
 use esp_hal::gpio::{DriveMode, Input, InputConfig, Level, Output, OutputConfig, Pull};
 use esp_hal::ledc::channel::ChannelIFace;
 use esp_hal::ledc::timer::TimerIFace;
+use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::ledc::{Ledc, channel, timer};
-use esp_hal::time::{Duration, Instant, Rate};
+use esp_hal::time::Rate;
+use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use static_cell::StaticCell;
 
@@ -18,9 +21,37 @@ use esp_backtrace as _;
 static LEDC_CELL: StaticCell<Ledc<'static>> = StaticCell::new();
 static TIMER_CELL: StaticCell<timer::Timer<'static, esp_hal::ledc::LowSpeed>> = StaticCell::new();
 
+#[embassy_executor::task]
+async fn switch_monitor_task(
+    mut switch: Input<'static>,
+    led_pwm: channel::Channel<'static, esp_hal::ledc::LowSpeed>,
+    mut led_dig: Output<'static>,
+) {
+    loop {
+        switch.wait_for_low().await;
+        switch.wait_for_high().await;
+        Timer::after(Duration::from_millis(20)).await;
+
+        if switch.is_high() {
+            println!("Switch released - turning on LED for 1.5s");
+            led_dig.set_high();
+            led_pwm.set_duty(75).unwrap();
+            Timer::after(Duration::from_millis(1500)).await;
+            led_pwm.set_duty(0).unwrap();
+            led_dig.set_low();
+            println!("LED off");
+        }
+    }
+}
+
 #[esp_rtos::main]
-async fn main(_spawner: embassy_executor::Spawner) {
+async fn main(spawner: embassy_executor::Spawner) {
     let peripherals = esp_hal::init(esp_hal::Config::default());
+    let timg0 = TimerGroup::new(peripherals.TIMG0);
+    let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
+
+    esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
+
     println!("start");
     let switch_input = Input::new(
         peripherals.GPIO4,
@@ -58,48 +89,13 @@ async fn main(_spawner: embassy_executor::Spawner) {
     info!("info");
     debug!("debug");
     trace!("trace");
+    Timer::after(Duration::from_millis(150)).await;
+    // panic!("BOOT CHECK: code is running!");
     led_dig.set_low();
-
-    let mut last_tick = Instant::now();
-    let mut last_switch_high = switch_input.is_high();
-    let mut release_candidate_at: Option<Instant> = None;
-    let mut led_on_at: Option<Instant> = None;
+    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig).unwrap());
 
     loop {
-        if last_tick.elapsed() >= Duration::from_secs(1) {
-            println!("tick");
-            last_tick = Instant::now();
-        }
-
-        let switch_high = switch_input.is_high();
-
-        if !last_switch_high && switch_high {
-            release_candidate_at = Some(Instant::now());
-        }
-
-        if !switch_high {
-            release_candidate_at = None;
-        }
-
-        if let Some(candidate_at) = release_candidate_at {
-            if switch_high && candidate_at.elapsed() >= Duration::from_millis(20) {
-                println!("Switch released - turning on LED for 1.5s");
-                led_dig.set_high();
-                pwm_channel.set_duty(75).unwrap();
-                led_on_at = Some(Instant::now());
-                release_candidate_at = None;
-            }
-        }
-
-        if let Some(started_at) = led_on_at {
-            if started_at.elapsed() >= Duration::from_millis(1500) {
-                pwm_channel.set_duty(0).unwrap();
-                led_dig.set_low();
-                println!("LED off");
-                led_on_at = None;
-            }
-        }
-
-        last_switch_high = switch_high;
+        println!("tick");
+        Timer::after(Duration::from_secs(1)).await;
     }
 }
