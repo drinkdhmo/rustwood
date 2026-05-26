@@ -1,5 +1,5 @@
-use embassy_net::{Config, Ipv4Address, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4};
 use embassy_executor::Spawner;
+use embassy_net::{Config, Ipv4Address, Ipv4Cidr, Runner, Stack, StackResources, StaticConfigV4};
 use esp_radio::wifi::{ControllerConfig, Interface, WifiController, ap::AccessPointConfig};
 
 use crate::mk_static;
@@ -20,9 +20,7 @@ pub async fn start_ap(
     spawner: &Spawner,
 ) -> (WifiController<'static>, Stack<'static>) {
     let controller_config = ControllerConfig::default().with_initial_config(
-        esp_radio::wifi::Config::AccessPoint(
-            AccessPointConfig::default().with_ssid("rustwood"),
-        ),
+        esp_radio::wifi::Config::AccessPoint(AccessPointConfig::default().with_ssid("rustwood")),
     );
 
     let (controller, interfaces) =
