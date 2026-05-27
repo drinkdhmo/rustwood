@@ -9,6 +9,7 @@ use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::ledc::channel::ChannelIFace;
 use esp_hal::ledc::timer::TimerIFace;
 use esp_hal::ledc::{Ledc, channel, timer};
+use esp_hal::rmt::{Rmt, TxChannelConfig, TxChannelCreator};
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
@@ -68,6 +69,19 @@ async fn main(spawner: embassy_executor::Spawner) {
         peripherals.GPIO4,
         InputConfig::default().with_pull(Pull::Up),
     );
+
+    // Phase 1 RGB wiring: reserve an RMT TX channel for the built-in NeoPixel on GPIO48.
+    let rmt = Rmt::new(peripherals.RMT, Rate::from_mhz(80)).expect("Failed to initialize RMT");
+    let neopixel_tx_config = TxChannelConfig::default()
+        .with_clk_divider(1)
+        .with_idle_output_level(Level::Low)
+        .with_idle_output(true)
+        .with_carrier_modulation(false);
+    let _neopixel_tx = rmt
+        .channel0
+        .configure_tx(&neopixel_tx_config)
+        .expect("Failed to configure RMT TX channel for NeoPixel")
+        .with_pin(peripherals.GPIO48);
 
     // 🟢 Explicitly initialize the static cells
     let ledc = LEDC_CELL.init(Ledc::new(peripherals.LEDC));

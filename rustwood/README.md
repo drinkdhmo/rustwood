@@ -106,6 +106,29 @@ The output configured for Wokwi is:
 target/xtensa-esp32s3-none-elf/debug/rustwood
 ```
 
+## Testing
+
+This workspace defaults to the embedded target (`xtensa-esp32s3-none-elf`), so plain `cargo test` will not work for unit tests that rely on Rust's standard test harness.
+
+Run host-side library unit tests with:
+
+```sh
+cargo +stable test-host
+```
+
+The `test-host` alias is defined in `.cargo/config.toml` and runs:
+
+```sh
+cargo test --target x86_64-unknown-linux-gnu --lib
+```
+
+For firmware validation on the board target, continue using:
+
+```sh
+source ~/export-esp.sh
+cargo build
+```
+
 ## Run On Hardware
 
 Because `.cargo/config.toml` sets a runner for the ESP32-S3, you can use:

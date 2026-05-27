@@ -1,4 +1,11 @@
 fn main() {
+    let target = std::env::var("TARGET").unwrap_or_default();
+    let is_esp_xtensa = target.starts_with("xtensa-esp32");
+
+    if !is_esp_xtensa {
+        return;
+    }
+
     linker_be_nice();
     println!("cargo:rustc-link-arg=-Tdefmt.x");
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
