@@ -2,6 +2,7 @@
 #![cfg_attr(target_arch = "xtensa", feature(impl_trait_in_assoc_type))]
 extern crate alloc;
 
+pub mod neopixel;
 #[cfg(target_arch = "xtensa")]
 pub mod web;
 #[cfg(target_arch = "xtensa")]

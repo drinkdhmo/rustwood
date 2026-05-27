@@ -4,7 +4,7 @@
 
 use defmt::*;
 use embassy_time::{Duration, Timer};
-use esp_hal::gpio::{DriveMode, Input, InputConfig, Level, Output, OutputConfig, Pull};
+use esp_hal::gpio::{DriveMode, Input, InputConfig, Level, Pull};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::ledc::channel::ChannelIFace;
 use esp_hal::ledc::timer::TimerIFace;
@@ -15,7 +15,14 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use static_cell::StaticCell;
 
-use rustwood::{LedConfig, LedConfigMutex, web, wifi};
+use rustwood::{
+    LedConfig,
+    LedConfigMutex,
+    RgbColor,
+    neopixel::neopixel_frame,
+    web,
+    wifi,
+};
 
 use defmt_rtt as _;
 use esp_backtrace as _;
@@ -31,7 +38,6 @@ static LED_CONFIG_CELL: StaticCell<LedConfigMutex> = StaticCell::new();
 async fn switch_monitor_task(
     mut switch: Input<'static>,
     led_pwm: channel::Channel<'static, esp_hal::ledc::LowSpeed>,
-    mut led_dig: Output<'static>,
     led_config: &'static LedConfigMutex,
 ) {
     loop {
@@ -45,11 +51,9 @@ async fn switch_monitor_task(
                 (c.duty_pct, c.on_delay_ms)
             };
             println!("Switch released - duty={}% delay={}ms", duty, delay_ms);
-            led_dig.set_high();
             led_pwm.set_duty(duty).unwrap();
             Timer::after(Duration::from_millis(delay_ms)).await;
             led_pwm.set_duty(0).unwrap();
-            led_dig.set_low();
             println!("LED off");
         }
     }
@@ -77,11 +81,18 @@ async fn main(spawner: embassy_executor::Spawner) {
         .with_idle_output_level(Level::Low)
         .with_idle_output(true)
         .with_carrier_modulation(false);
-    let _neopixel_tx = rmt
+    let neopixel_tx = rmt
         .channel0
         .configure_tx(&neopixel_tx_config)
         .expect("Failed to configure RMT TX channel for NeoPixel")
         .with_pin(peripherals.GPIO48);
+    let startup_frame = neopixel_frame(RgbColor::blue(32));
+    let startup_tx = neopixel_tx
+        .transmit(&startup_frame)
+        .unwrap_or_else(|(err, _)| ::core::panic!("NeoPixel startup transmit failed: {:?}", err));
+    let _neopixel_tx = startup_tx
+        .wait()
+        .unwrap_or_else(|(err, _)| ::core::panic!("NeoPixel startup wait failed: {:?}", err));
 
     // 🟢 Explicitly initialize the static cells
     let ledc = LEDC_CELL.init(Ledc::new(peripherals.LEDC));
@@ -106,8 +117,6 @@ async fn main(spawner: embassy_executor::Spawner) {
         })
         .unwrap();
 
-    let mut led_dig = Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
-
     println!("tick");
     error!("error");
     warn!("warn");
@@ -115,13 +124,11 @@ async fn main(spawner: embassy_executor::Spawner) {
     debug!("debug");
     trace!("trace");
     Timer::after(Duration::from_millis(150)).await;
-    // panic!("BOOT CHECK: code is running!");
-    led_dig.set_low();
 
     println!("Starting switch monitor task...");
     info!("Starting switch monitor task...");
     let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(LedConfig::default()));
-    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_dig, led_config).unwrap());
+    spawner.spawn(switch_monitor_task(switch_input, pwm_channel, led_config).unwrap());
 
     let (_wifi_controller, stack) = wifi::start_ap(peripherals.WIFI, &spawner).await;
     for id in 0..web::WEB_TASK_POOL_SIZE {
