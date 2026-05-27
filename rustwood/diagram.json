@@ -13,6 +13,13 @@
             }
         },
         {
+            "type": "wokwi-neopixel",
+            "id": "rgb1",
+            "top": 100,
+            "left": -150,
+            "attrs": {}
+        },
+        {
             "type": "wokwi-slide-switch",
             "id": "sw1",
             "top": -10,
@@ -26,15 +33,6 @@
             "left": 150,
             "attrs": {
                 "color": "green"
-            }
-        },
-        {
-            "type": "wokwi-led",
-            "id": "led2",
-            "top": -10,
-            "left": 200,
-            "attrs": {
-                "color": "red"
             }
         }
     ],
@@ -72,19 +70,30 @@
             ]
         ],
         [
-            "esp:GND.3",
-            "led2:C",
+            "esp:GND.1",
+            "rgb1:VSS",
             "black",
             [
-                "v0"
+                "h-24.28",
+                "v-76.08"
             ]
         ],
         [
-            "esp:6",
-            "led2:A",
+            "esp:5V",
+            "rgb1:VDD",
             "red",
             [
-                "v0"
+                "h-62.68",
+                "v-76.98"
+            ]
+        ],
+        [
+            "rgb1:DIN",
+            "esp:48",
+            "green",
+            [
+                "h8.8",
+                "v-28.62"
             ]
         ]
     ],

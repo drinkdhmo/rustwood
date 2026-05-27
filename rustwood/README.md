@@ -2,10 +2,10 @@
 
 `rustwood` is a `no_std` Rust firmware project for the ESP32-S3 using `esp-hal`, `esp-rtos`, `embassy`, and `defmt`.
 
-The application monitors a switch on `GPIO4`. When the switch is released it briefly debounces the input, then drives two LEDs for a configurable duration at a configurable PWM duty cycle:
+The application monitors a switch on `GPIO4`. When the switch is released it briefly debounces the input, then drives a PWM LED for a configurable duration while also updating the built-in NeoPixel state color:
 
 - `GPIO5`: PWM-driven LED via the LEDC peripheral (brightness set by duty cycle %)
-- `GPIO6`: digital on/off LED
+- `GPIO48`: built-in NeoPixel (WS2812-style) via RMT, driven through an RGB+brightness helper API
 
 A WiFi access point named **rustwood** is broadcast on startup. Connecting a browser to `http://192.168.4.1` opens a configuration page where the duty cycle (0–100 %) and on-delay (ms) can be changed live without reflashing. Updated values take effect on the next button press.
 
@@ -28,7 +28,6 @@ The included Wokwi diagram models the following connections:
 
 - `GPIO4` -> slide switch
 - `GPIO5` -> green LED anode
-- `GPIO6` -> red LED anode
 - all LED cathodes and the switch ground side -> `GND`
 - UART monitor -> `GPIO43` / `GPIO44`
 
@@ -39,19 +38,21 @@ At startup the firmware:
 - initializes the ESP32-S3 HAL and a 72 KB heap
 - configures `GPIO4` as an input with internal pull-up
 - configures LEDC timer 0 and channel 0 for PWM output on `GPIO5`
-- configures `GPIO6` as a digital output
+- configures RMT channel 0 for the built-in NeoPixel on `GPIO48`
 - starts the WiFi AP (`rustwood`, 192.168.4.1/24)
 - spawns two HTTP server tasks on port 80
 - emits `defmt` and serial log messages
 
 During runtime it:
 
-- waits for the switch to go low and then high again
+- keeps the NeoPixel blue while idle
+- waits for the switch to go low (closed) and then sets NeoPixel red (armed)
+- waits for the switch to go high again
 - waits 20 ms for debounce
 - if the switch is still high, reads the current `duty_pct` and `on_delay_ms` from the shared mutex
-- turns both LEDs on at the configured duty cycle
-- keeps them on for the configured delay
-- turns both LEDs off and resumes waiting
+- sets NeoPixel green during the active timeout window
+- drives the PWM LED on `GPIO5` at the configured duty cycle for the configured delay
+- returns NeoPixel to blue and resumes waiting
 
 ## Web Configuration UI
 
