@@ -20,6 +20,38 @@
             "attrs": {}
         },
         {
+            "type": "wokwi-servo",
+            "id": "servo1",
+            "top": -52,
+            "left": -72,
+            "rotate": 270,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-servo",
+            "id": "servo2",
+            "top": 38,
+            "left": -72,
+            "rotate": 270,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-servo",
+            "id": "servo3",
+            "top": 128,
+            "left": -72,
+            "rotate": 270,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-servo",
+            "id": "servo4",
+            "top": 218,
+            "left": -72,
+            "rotate": 270,
+            "attrs": {}
+        },
+        {
             "type": "wokwi-slide-switch",
             "id": "sw1",
             "top": -10,
@@ -54,19 +86,99 @@
             ]
         ],
         [
-            "esp:GND.2",
-            "led1:C",
-            "black",
+            "esp:5",
+            "servo1:PWM",
+            "green",
             [
-                "v0"
+                "h0"
             ]
         ],
         [
-            "esp:5",
-            "led1:A",
+            "esp:6",
+            "servo2:PWM",
             "green",
             [
-                "v0"
+                "h0"
+            ]
+        ],
+        [
+            "esp:7",
+            "servo3:PWM",
+            "green",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:15",
+            "servo4:PWM",
+            "green",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:5V",
+            "servo1:V+",
+            "red",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:5V",
+            "servo2:V+",
+            "red",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:5V",
+            "servo3:V+",
+            "red",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:5V",
+            "servo4:V+",
+            "red",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:GND.1",
+            "servo1:GND",
+            "black",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:GND.1",
+            "servo2:GND",
+            "black",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:GND.1",
+            "servo3:GND",
+            "black",
+            [
+                "h0"
+            ]
+        ],
+        [
+            "esp:GND.1",
+            "servo4:GND",
+            "black",
+            [
+                "h0"
             ]
         ],
         [

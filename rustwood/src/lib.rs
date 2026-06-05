@@ -62,6 +62,16 @@ impl RgbColor {
     pub const fn red(brightness: u8) -> Self {
         Self::rgb_with_brightness(255, 0, 0, brightness)
     }
+
+    /// Shortcut for yellow with a brightness scale.
+    pub const fn yellow(brightness: u8) -> Self {
+        Self::rgb_with_brightness(255, 255, 0, brightness)
+    }
+
+    /// Shortcut for orange with brightness scale.
+    pub const fn orange(brightness: u8) -> Self {
+        Self::rgb_with_brightness(255, 165, 0, brightness)
+    }
 }
 
 const fn scale_channel(channel: u8, brightness: u8) -> u8 {
@@ -95,6 +105,8 @@ mod tests {
         assert_eq!(RgbColor::blue(255), RgbColor::new(0, 0, 255));
         assert_eq!(RgbColor::green(255), RgbColor::new(0, 255, 0));
         assert_eq!(RgbColor::red(255), RgbColor::new(255, 0, 0));
+        assert_eq!(RgbColor::yellow(255), RgbColor::new(255, 255, 0));
+        assert_eq!(RgbColor::orange(255), RgbColor::new(255, 165, 0));
     }
 
     #[test]
@@ -105,17 +117,29 @@ mod tests {
     }
 }
 
-/// Shared LED configuration, updated via the web UI.
+/// Shared servo configuration, updated via the web UI.
 pub struct LedConfig {
-    pub duty_pct: u8,
+    pub motor_spare_throttle_percent: u16,
+    pub motor_left_wheel_throttle_percent: u16,
+    pub motor_right_wheel_throttle_percent: u16,
+    pub motor_fan_throttle_percent: u16,
+    pub motor_fan_idle_throttle_percent: u16,
+    pub arm_wait_ms: u64,
+    pub on_duration_ms: u64,
     pub on_delay_ms: u64,
 }
 
 impl Default for LedConfig {
     fn default() -> Self {
         Self {
-            duty_pct: 75,
-            on_delay_ms: 1500,
+            motor_spare_throttle_percent: 0,
+            motor_left_wheel_throttle_percent: 20,
+            motor_right_wheel_throttle_percent: 20,
+            motor_fan_throttle_percent: 20,
+            motor_fan_idle_throttle_percent: 0,
+            arm_wait_ms: 500,
+            on_duration_ms: 1500,
+            on_delay_ms: 0,
         }
     }
 }

@@ -26,7 +26,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 
 ### Phase 1: Dependencies & Lib (parallel)
 1. **`Cargo.toml`**: Add `serde = { version = "1", default-features = false, features = ["derive"] }` and `embassy-sync = { version = "0.8" }`
-2. **`src/lib.rs`**: Add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `LedConfig { duty_pct: u8, on_delay_ms: u64 }` struct with `Default` (75, 1500)
+2. **`src/lib.rs`**: Add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `LedConfig { duty_pct: u8, on_duration_ms: u64 }` struct with `Default` (75, 1500)
 
 ### Phase 2: WiFi AP Module
 3. **`src/wifi.rs`** (new):
@@ -42,7 +42,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 ### Phase 3: Web Module
 4. **`src/web.rs`** (new):
    - `pub struct AppState { pub led_config: &'static Mutex<CriticalSectionRawMutex, LedConfig> }`
-   - `#[derive(serde::Deserialize)] struct FormData { duty_pct: u8, on_delay_ms: u64 }`
+   - `#[derive(serde::Deserialize)] struct FormData { duty_pct: u8, on_duration_ms: u64 }`
    - `pub struct Application(pub AppState)` implementing `AppWithStateBuilder`:
      - **GET `/`**: lock mutex, format HTML form with current values, return HTML response
      - **POST `/`**: extract `Form<FormData>`, validate `duty_pct` 0–100, lock mutex, update values, return confirmation HTML
@@ -61,7 +61,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 ### Phase 5: switch_monitor_task Update
 6. **`switch_monitor_task`** in `src/bin/main.rs`:
    - Add `config: &'static Mutex<CriticalSectionRawMutex, LedConfig>` parameter
-   - Before LED activation: `let (duty, delay_ms) = { let c = config.lock().await; (c.duty_pct, c.on_delay_ms) };`
+   - Before LED activation: `let (duty, delay_ms) = { let c = config.lock().await; (c.duty_pct, c.on_duration_ms) };`
    - Replace hardcoded `75` → `duty` and `1500` → `delay_ms`
 
 ## Verification
