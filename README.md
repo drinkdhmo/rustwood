@@ -2,12 +2,12 @@
 
 `rustwood` is a `no_std` Rust firmware project for the ESP32-S3 using `esp-hal`, `esp-rtos`, `embassy`, and `defmt`.
 
-The application monitors a switch on `GPIO4`. When the switch is released it briefly debounces the input, then drives four PWM servo outputs for a configurable duration while also updating the built-in NeoPixel state color:
+The application monitors a switch on `GPIO4`. When the switch is pressed and held for a configurable arming delay, then released, it drives four PWM motor outputs at configurable throttle percentages (0-100%) after an optional activation delay. The NeoPixel LED provides feedback through multiple state colors:
 
-- `GPIO5`-`GPIO8`: servo PWM outputs via the LEDC peripheral (50 Hz, pulse width derived from angle)
+- `GPIO5`-`GPIO8`: motor PWM outputs via the LEDC peripheral (50 Hz, duty cycle derived from throttle percentage)
 - `GPIO48`: built-in NeoPixel (WS2812-style) via RMT, driven through an RGB+brightness helper API
 
-A WiFi access point named **rustwood** is broadcast on startup. Connecting a browser to `http://192.168.4.1` opens a configuration page where each servo angle (0-180 deg) and the on-delay (ms) can be changed live without reflashing. Updated values take effect on the next button press.
+A WiFi access point named **rustwood** is broadcast on startup. Connecting a browser to `http://192.168.4.1` opens a configuration page where motor throttle percentages, arm delay, and timing parameters can be changed live without reflashing. Updated values take effect on the next button press.
 
 The repository also includes a Wokwi simulation setup so the same firmware can be exercised without physical hardware.
 
@@ -77,12 +77,12 @@ sudo udevadm trigger
 
 The included Wokwi diagram models the following connections:
 
-- `GPIO4` -> slide switch
-- `GPIO5` -> servo 1 signal input
-- `GPIO6` -> servo 2 signal input
-- `GPIO7` -> servo 3 signal input
-- `GPIO15` -> servo 4 signal input
-- servo grounds and switch ground side -> `GND`
+- `GPIO4` -> push switch
+- `GPIO5` -> spare motor PWM signal input
+- `GPIO6` -> left wheel motor PWM signal input
+- `GPIO7` -> right wheel motor PWM signal input
+- `GPIO8` -> fan motor PWM signal input
+- motor grounds and switch ground side -> `GND`
 - UART monitor -> `GPIO43` / `GPIO44`
 
 ## Firmware Behavior
@@ -91,22 +91,21 @@ At startup the firmware:
 
 - initializes the ESP32-S3 HAL and a 72 KB heap
 - configures `GPIO4` as an input with internal pull-up
-- configures LEDC timer 1 and channels 0-3 for 50 Hz servo PWM output on `GPIO5`-`GPIO8`
+- configures LEDC timer 1 and channels 0-3 for 50 Hz motor PWM output on `GPIO5`-`GPIO8`
 - configures RMT channel 0 for the built-in NeoPixel on `GPIO48`
 - starts the WiFi AP (`rustwood`, 192.168.4.1/24)
 - spawns two HTTP server tasks on port 80
 - emits `defmt` and serial log messages
 
-During runtime it:
+During runtime it implements a state machine with color feedback:
 
-- keeps the NeoPixel blue while idle
-- waits for the switch to go low (closed) and then sets NeoPixel red (armed)
-- waits for the switch to go high again
-- waits 20 ms for debounce
-- if the switch is still high, reads the current servo angles and `on_duration_ms` from the shared mutex
-- sets NeoPixel green during the active timeout window
-- drives all four servos to their configured angles for the configured delay
-- returns NeoPixel to blue and resumes waiting
+- **Idle (blue)**: waits for button press; fan runs at idle throttle
+- **Arming (orange)**: switch held for `arm_wait_ms` (default 500 ms); NeoPixel shows arming in progress; if released during this window, sequence cancels and returns to idle
+- **Armed (red)**: switch held through arm delay; the fan motor is run at the idle throttle
+- **Switch released**: button is released after arming completes
+- **Activation delay (yellow)**: waits for `on_delay_ms` before motors reach full throttle (default 0 ms)
+- **Active run (green)**: all motors run at configured throttle percentages for `on_duration_ms` (default 1500 ms)
+- **Idle (blue)**: motors return to zero throttle, resumes waiting
 
 ## Web Configuration UI
 
@@ -116,8 +115,17 @@ Connect a device to the **rustwood** WiFi network (no password) and open:
 http://192.168.4.1
 ```
 
-The page shows the current servo angles and on-delay and lets you submit new values via a form POST. Changes are applied immediately to the shared config mutex and take effect on the next button press.
+The page shows the current motor throttle percentages (0-100%) and timing parameters and lets you submit new values via a form POST. Changes are applied immediately to the shared config mutex and take effect on the next button press.
 
+Configuration parameters:
+- **Spare motor throttle**: 0-100% (default 0%)
+- **Left wheel motor throttle**: 0-100% (default 20%)
+- **Right wheel motor throttle**: 0-100% (default 20%)
+- **Fan motor throttle**: 0-100% (default 20%)
+- **Fan idle throttle**: 0-100% (default 0%, runs while idle)
+- **Arm delay**: milliseconds to hold switch before arming (default 500 ms)
+- **Activation delay**: milliseconds to wait after button release before reaching full throttle (default 0 ms)
+- **Run duration**: milliseconds to run motors at full throttle (default 1500 ms)
 ## Requirements
 
 You need an ESP Rust toolchain and linker capable of building for `xtensa-esp32s3-none-elf`.
