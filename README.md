@@ -11,6 +11,57 @@ A WiFi access point named **rustwood** is broadcast on startup. Connecting a bro
 
 The repository also includes a Wokwi simulation setup so the same firmware can be exercised without physical hardware.
 
+## System Setup
+
+This project uses rust. Ensure you have the prerequisites:
+
+```sh
+sudo apt update && sudo apt install curl build-essential -y
+```
+
+Then install rust:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Add the source to your rc file:
+```sh
+echo '. "$HOME/.cargo/env"' >> ~/.zshrc && source ~/.zshrc
+```
+
+Now install the toolchain (from https://esp32.implrust.com/dev-env.html), but make sure you are not in this folder when you run it or cargo will try to use the ESP toolchain that is not yet installed. Also, specific versions are included that are known to work with this project.
+```sh
+cargo install cargo-binstall
+cargo binstall espflash@4.2.0
+```
+Verify the installation:
+```sh
+espflash --version
+```
+Now for `esp-generate`:
+```sh
+cargo install esp-generate@1.0.0 --locked
+```
+Next `espup`:
+```sh
+cargo binstall espup@0.16.0
+espup install --toolchain-version 1.95.0
+```
+Finally, install `probe-rs`:
+```sh
+cargo install probe-rs-tools --locked
+```
+
+### Udev Rules
+
+```sh
+curl -sL https://probe.rs/files/69-probe-rs.rules | sudo tee /etc/udev/rules.d/69-probe-rs.rules > /dev/null
+sudo udevadm control --reload
+sudo udevadm trigger
+```
+
+
 ## Project Layout
 
 - `src/bin/main.rs`: application entry point — hardware init, WiFi start, task spawning
