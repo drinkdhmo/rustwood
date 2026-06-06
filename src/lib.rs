@@ -7,7 +7,21 @@ pub mod neopixel;
 pub mod web;
 #[cfg(target_arch = "xtensa")]
 pub mod wifi;
+#[cfg(target_arch = "xtensa")]
+pub mod storage;
 
+#[cfg(target_arch = "xtensa")]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FirmwareIdentity {
+    pub firmware_id: alloc::string::String,
+}
+
+#[cfg(target_arch = "xtensa")]
+pub fn current_firmware_identity() -> FirmwareIdentity {
+    FirmwareIdentity {
+        firmware_id: alloc::string::String::from(env!("RUSTWOOD_FIRMWARE_ID")),
+    }
+}
 /// Initialise a static variable and return a reference to it.
 #[macro_export]
 macro_rules! mk_static {
@@ -81,6 +95,7 @@ const fn scale_channel(channel: u8, brightness: u8) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::RgbColor;
+    use super::LedConfig;
 
     #[test]
     fn rgb_with_brightness_zero_turns_off_all_channels() {
@@ -115,9 +130,21 @@ mod tests {
         assert_eq!(RgbColor::green(64), RgbColor::new(0, 64, 0));
         assert_eq!(RgbColor::red(64), RgbColor::new(64, 0, 0));
     }
+
+    #[test]
+    fn led_config_round_trips_through_postcard() {
+        let config = LedConfig::default();
+        let mut buffer = [0u8; 64];
+
+        let encoded = postcard::to_slice(&config, &mut buffer).expect("encode config");
+        let decoded = postcard::from_bytes::<LedConfig>(encoded).expect("decode config");
+
+        assert_eq!(decoded, config);
+    }
 }
 
 /// Shared servo configuration, updated via the web UI.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LedConfig {
     pub motor_spare_throttle_percent: u16,
     pub motor_left_wheel_throttle_percent: u16,

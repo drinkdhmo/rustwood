@@ -115,7 +115,7 @@ Connect a device to the **rustwood** WiFi network (no password) and open:
 http://192.168.4.1
 ```
 
-The page shows the current motor throttle percentages (0-100%) and timing parameters and lets you submit new values via a form POST. Changes are applied immediately to the shared config mutex and take effect on the next button press.
+The page shows the current motor throttle percentages (0-100%) and timing parameters and lets you submit new values via a form POST. Use **Apply** to update the shared config mutex only, or **Save to flash** to persist the current form values across reboot.
 
 Configuration parameters:
 - **Spare motor throttle**: 0-100% (default 0%)
@@ -126,6 +126,8 @@ Configuration parameters:
 - **Arm delay**: milliseconds to hold switch before arming (default 5 s)
 - **Activation delay**: milliseconds to wait after button release before reaching full throttle (default 0 ms)
 - **Run duration**: milliseconds to run motors at full throttle (default 1500 ms)
+
+Saved values are reloaded from flash on startup when a valid record is present.
 ## Requirements
 
 You need an ESP Rust toolchain and linker capable of building for `xtensa-esp32s3-none-elf`.

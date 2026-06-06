@@ -15,7 +15,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use static_cell::StaticCell;
 
-use rustwood::{LedConfig, LedConfigMutex, RgbColor, neopixel::neopixel_frame, web, wifi};
+use rustwood::{LedConfig, LedConfigMutex, RgbColor, neopixel::neopixel_frame, storage, web, wifi};
 
 use defmt_rtt as _;
 use esp_backtrace as _;
@@ -25,6 +25,7 @@ esp_bootloader_esp_idf::esp_app_desc!();
 // 🟢 Declare concrete types for the static cells
 static LEDC_CELL: StaticCell<Ledc<'static>> = StaticCell::new();
 static TIMER_CELL: StaticCell<timer::Timer<'static, esp_hal::ledc::LowSpeed>> = StaticCell::new();
+static FLASH_CELL: StaticCell<storage::FlashMutex> = StaticCell::new();
 
 static WEB_CONFIG: picoserve::Config = picoserve::Config::const_default();
 static LED_CONFIG_CELL: StaticCell<LedConfigMutex> = StaticCell::new();
@@ -212,6 +213,9 @@ async fn switch_monitor_task(
 async fn main(spawner: embassy_executor::Spawner) {
     let peripherals = esp_hal::init(esp_hal::Config::default());
     esp_alloc::heap_allocator!(size: 72 * 1024);
+    let flash_storage = FLASH_CELL.init(storage::FlashMutex::new(esp_storage::FlashStorage::new(
+        peripherals.FLASH,
+    )));
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 
@@ -306,13 +310,25 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     println!("Starting switch monitor task...");
     info!("Starting switch monitor task...");
-    let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(LedConfig::default()));
+    let led_config_value = match storage::load_led_config(flash_storage).await {
+        Ok(Some(config)) => config,
+        Ok(None) => {
+            println!("No persisted config found, using defaults");
+            LedConfig::default()
+        }
+        Err(err) => {
+            println!("Failed to load persisted config, using defaults: {:?}", err);
+            LedConfig::default()
+        }
+    };
+    let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(led_config_value));
     spawner
         .spawn(switch_monitor_task(switch_input, servo_outputs, neopixel_tx, led_config).unwrap());
 
     let (_wifi_controller, stack) = wifi::start_ap(peripherals.WIFI, &spawner).await;
     for id in 0..web::WEB_TASK_POOL_SIZE {
-        spawner.spawn(web::web_task(id, stack, &WEB_CONFIG, led_config).unwrap());
+        spawner
+            .spawn(web::web_task(id, stack, &WEB_CONFIG, flash_storage, led_config).unwrap());
     }
 
     loop {

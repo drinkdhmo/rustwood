@@ -2,6 +2,9 @@ fn main() {
     let target = std::env::var("TARGET").unwrap_or_default();
     let is_esp_xtensa = target.starts_with("xtensa-esp32");
 
+    let firmware_id = git_firmware_id();
+    println!("cargo:rustc-env=RUSTWOOD_FIRMWARE_ID={firmware_id}");
+
     if !is_esp_xtensa {
         return;
     }
@@ -10,6 +13,19 @@ fn main() {
     println!("cargo:rustc-link-arg=-Tdefmt.x");
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+fn git_firmware_id() -> String {
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--short=12", "HEAD"])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_owned()
+        }
+        _ => String::from("unknown"),
+    }
 }
 
 fn linker_be_nice() {
