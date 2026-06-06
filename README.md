@@ -100,7 +100,7 @@ At startup the firmware:
 During runtime it implements a state machine with color feedback:
 
 - **Idle (blue)**: waits for button press; fan runs at idle throttle
-- **Arming (orange)**: switch held for `arm_wait_ms` (default 500 ms); NeoPixel shows arming in progress; if released during this window, sequence cancels and returns to idle
+- **Arming (orange)**: switch held for `arm_wait_ms` (default 5 s); NeoPixel shows arming in progress; if released during this window, sequence cancels and returns to idle
 - **Armed (red)**: switch held through arm delay; the fan motor is run at the idle throttle
 - **Switch released**: button is released after arming completes
 - **Activation delay (yellow)**: waits for `on_delay_ms` before motors reach full throttle (default 0 ms)
@@ -119,11 +119,11 @@ The page shows the current motor throttle percentages (0-100%) and timing parame
 
 Configuration parameters:
 - **Spare motor throttle**: 0-100% (default 0%)
-- **Left wheel motor throttle**: 0-100% (default 20%)
-- **Right wheel motor throttle**: 0-100% (default 20%)
-- **Fan motor throttle**: 0-100% (default 20%)
-- **Fan idle throttle**: 0-100% (default 0%, runs while idle)
-- **Arm delay**: milliseconds to hold switch before arming (default 500 ms)
+- **Left wheel motor throttle**: 0-100% (default 50%)
+- **Right wheel motor throttle**: 0-100% (default 50%)
+- **Fan motor throttle**: 0-100% (default 100%)
+- **Fan idle throttle**: 0-100% (default 20%, runs while idle) This improves the fan motor response time.
+- **Arm delay**: milliseconds to hold switch before arming (default 5 s)
 - **Activation delay**: milliseconds to wait after button release before reaching full throttle (default 0 ms)
 - **Run duration**: milliseconds to run motors at full throttle (default 1500 ms)
 ## Requirements

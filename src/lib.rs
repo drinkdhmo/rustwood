@@ -133,11 +133,11 @@ impl Default for LedConfig {
     fn default() -> Self {
         Self {
             motor_spare_throttle_percent: 0,
-            motor_left_wheel_throttle_percent: 20,
-            motor_right_wheel_throttle_percent: 20,
-            motor_fan_throttle_percent: 20,
-            motor_fan_idle_throttle_percent: 0,
-            arm_wait_ms: 500,
+            motor_left_wheel_throttle_percent: 50,
+            motor_right_wheel_throttle_percent: 50,
+            motor_fan_throttle_percent: 100,
+            motor_fan_idle_throttle_percent: 20,
+            arm_wait_ms: 5000,
             on_duration_ms: 1500,
             on_delay_ms: 0,
         }
