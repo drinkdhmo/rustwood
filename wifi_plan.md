@@ -6,7 +6,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 ## Key Technical Decisions
 - AP SSID: "rustwood", open (no password)
 - Static IP: 192.168.4.1/24 — no DHCP server; user manually sets client IP to 192.168.4.x
-- Shared config: `Mutex<CriticalSectionRawMutex, LedConfig>` in a `StaticCell`, shared by ref
+- Shared config: `Mutex<CriticalSectionRawMutex, RustwoodConfig>` in a `StaticCell`, shared by ref
 - Form POST handling: `picoserve::extract::Form<FormData>` with `serde::Deserialize`
 - `WifiController` kept alive in `main()` (never dropped)
 - Pool size 2 web tasks, `StackResources<4>`
@@ -15,7 +15,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 
 ### Modified
 - `Cargo.toml` — add `serde` (no_std, derive), `embassy-sync` explicitly
-- `src/lib.rs` — add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `LedConfig` struct
+- `src/lib.rs` — add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `RustwoodConfig` struct
 - `src/bin/main.rs` — add heap allocator, WiFi AP init, embassy-net stack, spawn net_task + web tasks; pass `&LED_CONFIG` to switch task; update switch task signature
 
 ### New
@@ -26,7 +26,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 
 ### Phase 1: Dependencies & Lib (parallel)
 1. **`Cargo.toml`**: Add `serde = { version = "1", default-features = false, features = ["derive"] }` and `embassy-sync = { version = "0.8" }`
-2. **`src/lib.rs`**: Add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `LedConfig { duty_pct: u8, on_duration_ms: u64 }` struct with `Default` (75, 1500)
+2. **`src/lib.rs`**: Add `#![feature(impl_trait_in_assoc_type)]`, `pub mod web; pub mod wifi;`, `mk_static!` macro, `RustwoodConfig { duty_pct: u8, on_duration_ms: u64 }` struct with `Default` (75, 1500)
 
 ### Phase 2: WiFi AP Module
 3. **`src/wifi.rs`** (new):
@@ -41,7 +41,7 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 
 ### Phase 3: Web Module
 4. **`src/web.rs`** (new):
-   - `pub struct AppState { pub led_config: &'static Mutex<CriticalSectionRawMutex, LedConfig> }`
+   - `pub struct AppState { pub rustwood_config: &'static Mutex<CriticalSectionRawMutex, RustwoodConfig> }`
    - `#[derive(serde::Deserialize)] struct FormData { duty_pct: u8, on_duration_ms: u64 }`
    - `pub struct Application(pub AppState)` implementing `AppWithStateBuilder`:
      - **GET `/`**: lock mutex, format HTML form with current values, return HTML response
@@ -52,15 +52,15 @@ Add a WiFi Access Point to the ESP32-S3 so a browser on the same network can con
 ### Phase 4: Wire main.rs
 5. **`src/bin/main.rs`**:
    - Add `esp_alloc::heap_allocator!(size: 72 * 1024);` after `esp_hal::init`
-   - `static LED_CONFIG: StaticCell<Mutex<CriticalSectionRawMutex, LedConfig>> = StaticCell::new();` — init with `LedConfig::default()`
+   - `static LED_CONFIG: StaticCell<Mutex<CriticalSectionRawMutex, RustwoodConfig>> = StaticCell::new();` — init with `RustwoodConfig::default()`
    - `let (_controller, stack) = lib::wifi::start_ap(peripherals.WIFI, &spawner).await;`
-   - Build `AppState`, build `Application(AppState { led_config }).build_app()`
+   - Build `AppState`, build `Application(AppState { rustwood_config }).build_app()`
    - Spawn 2 web tasks
-   - Pass `led_config` ref to `switch_monitor_task`
+   - Pass `rustwood_config` ref to `switch_monitor_task`
 
 ### Phase 5: switch_monitor_task Update
 6. **`switch_monitor_task`** in `src/bin/main.rs`:
-   - Add `config: &'static Mutex<CriticalSectionRawMutex, LedConfig>` parameter
+   - Add `config: &'static Mutex<CriticalSectionRawMutex, RustwoodConfig>` parameter
    - Before LED activation: `let (duty, delay_ms) = { let c = config.lock().await; (c.duty_pct, c.on_duration_ms) };`
    - Replace hardcoded `75` → `duty` and `1500` → `delay_ms`
 

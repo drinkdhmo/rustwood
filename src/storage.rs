@@ -2,7 +2,7 @@ use postcard::{from_bytes, to_slice};
 
 use embedded_storage::{ReadStorage, Storage};
 
-use crate::{current_firmware_identity, LedConfig};
+use crate::{current_firmware_identity, RustwoodConfig};
 
 pub type FlashMutex = embassy_sync::mutex::Mutex<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
@@ -43,7 +43,7 @@ fn write_u32_le(bytes: &mut [u8], value: u32) {
     bytes.copy_from_slice(&value.to_le_bytes());
 }
 
-pub async fn load_led_config(flash: &FlashMutex) -> Result<Option<LedConfig>, ConfigStorageError> {
+pub async fn load_rustwood_config(flash: &FlashMutex) -> Result<Option<RustwoodConfig>, ConfigStorageError> {
     let mut sector = [0u8; CONFIG_SECTOR_SIZE];
 
     {
@@ -77,13 +77,13 @@ pub async fn load_led_config(flash: &FlashMutex) -> Result<Option<LedConfig>, Co
         return Ok(None);
     }
 
-    let config = from_bytes::<LedConfig>(payload).map_err(ConfigStorageError::Decode)?;
+    let config = from_bytes::<RustwoodConfig>(payload).map_err(ConfigStorageError::Decode)?;
     Ok(Some(config))
 }
 
-pub async fn save_led_config(
+pub async fn save_rustwood_config(
     flash: &FlashMutex,
-    config: &LedConfig,
+    config: &RustwoodConfig,
 ) -> Result<(), ConfigStorageError> {
     let mut sector = [0u8; CONFIG_SECTOR_SIZE];
     let identity = current_firmware_identity();

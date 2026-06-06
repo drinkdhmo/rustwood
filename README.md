@@ -65,7 +65,7 @@ sudo udevadm trigger
 ## Project Layout
 
 - `src/bin/main.rs`: application entry point — hardware init, WiFi start, task spawning
-- `src/lib.rs`: shared types (`LedConfig`, `LedConfigMutex`) and the `mk_static!` macro
+- `src/lib.rs`: shared types (`RustwoodConfig`, `RustwoodConfigMutex`) and the `mk_static!` macro
 - `src/wifi.rs`: WiFi AP setup using `esp-radio` and `embassy-net`
 - `src/web.rs`: picoserve HTTP server — GET renders the config form, POST updates it
 - `build.rs`: linker configuration and helpful linker error hints

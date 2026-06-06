@@ -15,7 +15,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use static_cell::StaticCell;
 
-use rustwood::{LedConfig, LedConfigMutex, RgbColor, neopixel::neopixel_frame, storage, web, wifi};
+use rustwood::{RustwoodConfig, RustwoodConfigMutex, RgbColor, neopixel::neopixel_frame, storage, web, wifi};
 
 use defmt_rtt as _;
 use esp_backtrace as _;
@@ -28,7 +28,7 @@ static TIMER_CELL: StaticCell<timer::Timer<'static, esp_hal::ledc::LowSpeed>> = 
 static FLASH_CELL: StaticCell<storage::FlashMutex> = StaticCell::new();
 
 static WEB_CONFIG: picoserve::Config = picoserve::Config::const_default();
-static LED_CONFIG_CELL: StaticCell<LedConfigMutex> = StaticCell::new();
+static LED_CONFIG_CELL: StaticCell<RustwoodConfigMutex> = StaticCell::new();
 
 const SERVO_PWM_FREQ_HZ: u32 = 50;
 const SERVO_PERIOD_US: u32 = 1_000_000 / SERVO_PWM_FREQ_HZ;
@@ -105,7 +105,7 @@ async fn switch_monitor_task(
     mut switch: Input<'static>,
     servo_outputs: ServoOutputs,
     neopixel_tx: Channel<'static, esp_hal::Blocking, Tx>,
-    led_config: &'static LedConfigMutex,
+    rustwood_config: &'static RustwoodConfigMutex,
 ) {
     let mut neopixel_tx = neopixel_tx;
 
@@ -132,7 +132,7 @@ async fn switch_monitor_task(
             on_duration_ms,
             on_delay_ms,
         ) = {
-            let c = led_config.lock().await;
+            let c = rustwood_config.lock().await;
             (
                 c.motor_spare_throttle_percent,
                 c.motor_left_wheel_throttle_percent,
@@ -310,25 +310,25 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     println!("Starting switch monitor task...");
     info!("Starting switch monitor task...");
-    let led_config_value = match storage::load_led_config(flash_storage).await {
+    let rustwood_config_value = match storage::load_rustwood_config(flash_storage).await {
         Ok(Some(config)) => config,
         Ok(None) => {
             println!("No persisted config found, using defaults");
-            LedConfig::default()
+            RustwoodConfig::default()
         }
         Err(err) => {
             println!("Failed to load persisted config, using defaults: {:?}", err);
-            LedConfig::default()
+            RustwoodConfig::default()
         }
     };
-    let led_config = LED_CONFIG_CELL.init(LedConfigMutex::new(led_config_value));
+    let rustwood_config = LED_CONFIG_CELL.init(RustwoodConfigMutex::new(rustwood_config_value));
     spawner
-        .spawn(switch_monitor_task(switch_input, servo_outputs, neopixel_tx, led_config).unwrap());
+        .spawn(switch_monitor_task(switch_input, servo_outputs, neopixel_tx, rustwood_config).unwrap());
 
     let (_wifi_controller, stack) = wifi::start_ap(peripherals.WIFI, &spawner).await;
     for id in 0..web::WEB_TASK_POOL_SIZE {
         spawner
-            .spawn(web::web_task(id, stack, &WEB_CONFIG, flash_storage, led_config).unwrap());
+            .spawn(web::web_task(id, stack, &WEB_CONFIG, flash_storage, rustwood_config).unwrap());
     }
 
     loop {

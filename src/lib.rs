@@ -95,7 +95,7 @@ const fn scale_channel(channel: u8, brightness: u8) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::RgbColor;
-    use super::LedConfig;
+    use super::RustwoodConfig;
 
     #[test]
     fn rgb_with_brightness_zero_turns_off_all_channels() {
@@ -132,12 +132,12 @@ mod tests {
     }
 
     #[test]
-    fn led_config_round_trips_through_postcard() {
-        let config = LedConfig::default();
+    fn rustwood_config_round_trips_through_postcard() {
+        let config = RustwoodConfig::default();
         let mut buffer = [0u8; 64];
 
         let encoded = postcard::to_slice(&config, &mut buffer).expect("encode config");
-        let decoded = postcard::from_bytes::<LedConfig>(encoded).expect("decode config");
+        let decoded = postcard::from_bytes::<RustwoodConfig>(encoded).expect("decode config");
 
         assert_eq!(decoded, config);
     }
@@ -145,7 +145,7 @@ mod tests {
 
 /// Shared servo configuration, updated via the web UI.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct LedConfig {
+pub struct RustwoodConfig {
     pub motor_spare_throttle_percent: u16,
     pub motor_left_wheel_throttle_percent: u16,
     pub motor_right_wheel_throttle_percent: u16,
@@ -156,7 +156,7 @@ pub struct LedConfig {
     pub on_delay_ms: u64,
 }
 
-impl Default for LedConfig {
+impl Default for RustwoodConfig {
     fn default() -> Self {
         Self {
             motor_spare_throttle_percent: 0,
@@ -173,4 +173,4 @@ impl Default for LedConfig {
 
 /// Type alias for the shared config mutex.
 #[cfg(target_arch = "xtensa")]
-pub type LedConfigMutex = Mutex<CriticalSectionRawMutex, LedConfig>;
+pub type RustwoodConfigMutex = Mutex<CriticalSectionRawMutex, RustwoodConfig>;

@@ -5,9 +5,9 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use picoserve::extract::Form;
 use picoserve::{Router, routing};
 
-use crate::{LedConfig, storage};
+use crate::{RustwoodConfig, storage};
 
-type LedConfigMutex = Mutex<CriticalSectionRawMutex, LedConfig>;
+type RustwoodConfigMutex = Mutex<CriticalSectionRawMutex, RustwoodConfig>;
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -31,8 +31,8 @@ struct FormData {
 
 pub const WEB_TASK_POOL_SIZE: usize = 2;
 
-fn build_led_config(data: &FormData) -> LedConfig {
-    LedConfig {
+fn build_rustwood_config(data: &FormData) -> RustwoodConfig {
+    RustwoodConfig {
         motor_spare_throttle_percent: data.motor_spare_throttle_percent.min(100),
         motor_left_wheel_throttle_percent: data.motor_left_wheel_throttle_percent.min(100),
         motor_right_wheel_throttle_percent: data.motor_right_wheel_throttle_percent.min(100),
@@ -44,7 +44,7 @@ fn build_led_config(data: &FormData) -> LedConfig {
     }
 }
 
-fn render_page(config: &LedConfig, message: Option<&str>) -> String {
+fn render_page(config: &RustwoodConfig, message: Option<&str>) -> String {
     let message_html = message
         .map(|message| format!("<p style=\"color:#b71c1c;font-weight:600;\">{message}</p>"))
         .unwrap_or_default();
@@ -87,25 +87,25 @@ pub async fn web_task(
     stack: Stack<'static>,
     config: &'static picoserve::Config,
     flash_storage: &'static storage::FlashMutex,
-    led_config: &'static LedConfigMutex,
+    rustwood_config: &'static RustwoodConfigMutex,
 ) {
     let app = Router::new().route(
         "/",
         routing::get(async move || {
             let config = {
-                let c = led_config.lock().await;
+                let c = rustwood_config.lock().await;
                 *c
             };
             let html = render_page(&config, None);
             (("content-type", "text/html"), html)
         })
         .post(async move |Form(data): Form<FormData>| {
-            let config = build_led_config(&data);
+            let config = build_rustwood_config(&data);
 
             match data.action {
                 FormAction::Apply => {
                     {
-                        let mut c = led_config.lock().await;
+                        let mut c = rustwood_config.lock().await;
                         *c = config;
                     }
 
@@ -124,10 +124,10 @@ pub async fn web_task(
                     let html = render_page(&config, Some("Applied live settings"));
                     (("content-type", "text/html"), html)
                 }
-                FormAction::Save => match storage::save_led_config(flash_storage, &config).await {
+                FormAction::Save => match storage::save_rustwood_config(flash_storage, &config).await {
                     Ok(()) => {
                         {
-                            let mut c = led_config.lock().await;
+                            let mut c = rustwood_config.lock().await;
                             *c = config;
                         }
 
